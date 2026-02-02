@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: mongoDB
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - stock-net
+
+  backend:
+    image: stock-backend:latest
+    container_name: stock-backend
+    depends_on:
+      - mongo
+    environment:
+      # 不用帳號密碼，直接連 MongoDB
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/stockDB
+    ports:
+      - "8080:8080"
+    networks:
+      - stock-net
+
+  ai_api:
+    image: stock-ai-api:latest
+    container_name: stock-ai-api
+    depends_on:
+      - mongo
+    environment:
+      # 不用帳號密碼，直接連 MongoDB
+      MONGO_URI: mongodb://mongo:27017/stockDB
+    command: flask run --host=0.0.0.0 --port=5000
+    ports:
+      - "5000:5000"
+    networks:
+      - stock-net
+
+  frontend:
+    image: stock-frontend:latest
+    container_name: stock-frontend
+    depends_on:
+      - backend
+      - ai_api
+    ports:
+      - "3000:80"
+    networks:
+      - stock-net
+
+volumes:
+  mongo_data:
+
+networks:
+  stock-net:
