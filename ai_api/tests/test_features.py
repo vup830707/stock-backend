@@ -25,3 +25,13 @@ def test_ret_1_matches_adjacent_closes_not_next():
     leak = (bars[idx + 1].close - bars[idx].close) / bars[idx].close
     assert abs(last["ret_1"] - leak) > 1e-6
     assert abs(last["y"] - leak) < 1e-9
+
+
+def test_rsi_50_for_flat_window():
+    start = date(2020, 1, 2)
+    bars = [
+        Bar((start + timedelta(days=i)).strftime("%Y/%m/%d"), 100.0, 101.0, 99.0, 100.0, 1000.0)
+        for i in range(80)
+    ]
+    df = build_feature_frame(bars)
+    assert abs(df.iloc[-1]["rsi_14"] - 50.0) < 1e-9

@@ -26,7 +26,8 @@ def build_feature_frame(bars: list[Bar]) -> pd.DataFrame:
     loss = (-delta.clip(upper=0)).rolling(14).mean()
     rs = gain / loss.replace(0, np.nan)
     df["rsi_14"] = 100 - (100 / (1 + rs))
-    df.loc[loss.eq(0), "rsi_14"] = 100.0
+    df.loc[loss.eq(0) & gain.gt(0), "rsi_14"] = 100.0
+    df.loc[loss.eq(0) & gain.eq(0), "rsi_14"] = 50.0
     high_low = df["high"] - df["low"]
     high_close = (df["high"] - close.shift(1)).abs()
     low_close = (df["low"] - close.shift(1)).abs()
