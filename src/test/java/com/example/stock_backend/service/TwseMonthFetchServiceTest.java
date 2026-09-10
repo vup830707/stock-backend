@@ -60,4 +60,23 @@ class TwseMonthFetchServiceTest {
         assertEquals("台積電", result.getStockName());
         verify(writer).upsert(eq("2330"), eq("台積電"), any(TwseBar.class));
     }
+
+    @Test
+    void fetchMonth_realTwseTitle_extractsChineseName() {
+        String json = "{"
+                + "\"stat\":\"OK\","
+                + "\"title\":\"115年09月 2330 台積電 各日成交資訊\","
+                + "\"data\":[[\"110/03/02\",\"1,000\",\"1\",\"600.00\",\"610.00\",\"590.00\",\"605.00\",\"+5.00\",\"10\"]]"
+                + "}";
+        when(timingRestTemplate.getForObject(contains("20210301"), eq(String.class)))
+                .thenReturn(json);
+        TwseMonthFetchService service = new TwseMonthFetchService(writer, timingRestTemplate);
+
+        FetchMonthResponse result = service.fetchMonth("2330", "202103");
+
+        assertTrue(result.isTwseOk());
+        assertEquals(1, result.getUpserted());
+        assertEquals("台積電", result.getStockName());
+        verify(writer).upsert(eq("2330"), eq("台積電"), any(TwseBar.class));
+    }
 }

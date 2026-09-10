@@ -9,11 +9,15 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class TwseMonthFetchService {
     private static final DateTimeFormatter YM = DateTimeFormatter.ofPattern("yyyyMM");
     private static final DateTimeFormatter TWSE_DAY = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final Pattern STOCK_NAME = Pattern.compile(
+            "\\d{4}\\s+(.+?)\\s+(?:各日成交資訊|日成交資訊)");
 
     private final StockHistoryWriter writer;
     private final RestTemplate timingRestTemplate;
@@ -40,7 +44,7 @@ public class TwseMonthFetchService {
                 return miss(stockNo, yearMonth);
             }
             String stockTitle = root.path("title").asText();
-            String stockName = stockTitle.replaceAll("^\\d+\\s+", "").replace(" 日成交資訊", "");
+            String stockName = parseStockName(stockTitle);
             int upserted = 0;
             for (JsonNode row : root.path("data")) {
                 var parsed = TwseBarParser.parseRow(row);
@@ -56,6 +60,14 @@ public class TwseMonthFetchService {
         } catch (Exception e) {
             return miss(stockNo, yearMonth);
         }
+    }
+
+    private static String parseStockName(String title) {
+        if (title == null || title.isBlank()) {
+            return "";
+        }
+        Matcher matcher = STOCK_NAME.matcher(title);
+        return matcher.find() ? matcher.group(1).trim() : "";
     }
 
     private static FetchMonthResponse miss(String stockNo, String yearMonth) {
