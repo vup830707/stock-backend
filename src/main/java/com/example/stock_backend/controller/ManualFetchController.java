@@ -1,9 +1,12 @@
 package com.example.stock_backend.controller;
 
+import com.example.stock_backend.dto.fetch.FetchMonthRequest;
 import com.example.stock_backend.service.StockHistoryWriter;
+import com.example.stock_backend.service.TwseMonthFetchService;
 import com.example.stock_backend.twse.TwseBarParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -11,6 +14,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/manual")
@@ -18,11 +22,13 @@ import java.util.List;
 public class ManualFetchController {
 
     private final StockHistoryWriter writer;
+    private final TwseMonthFetchService monthFetchService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public ManualFetchController(StockHistoryWriter writer) {
+    public ManualFetchController(StockHistoryWriter writer, TwseMonthFetchService monthFetchService) {
         this.writer = writer;
+        this.monthFetchService = monthFetchService;
     }
 
     /**
@@ -31,6 +37,16 @@ public class ManualFetchController {
      * @param startDate yyyy-MM-dd
      * @param endDate yyyy-MM-dd
      */
+    @PostMapping("/fetch-month")
+    public ResponseEntity<?> fetchMonth(@RequestBody FetchMonthRequest request) {
+        String stockNo = request == null ? null : request.getStockNo();
+        String yearMonth = request == null ? null : request.getYearMonth();
+        if (stockNo == null || stockNo.isBlank() || yearMonth == null || !yearMonth.matches("\\d{6}")) {
+            return ResponseEntity.badRequest().body(Map.of("reason", "bad_request"));
+        }
+        return ResponseEntity.ok(monthFetchService.fetchMonth(stockNo.trim(), yearMonth));
+    }
+
     @GetMapping("/fetch-range")
     public String fetchStockManualRange(@RequestParam String stockNo,
                                         @RequestParam String startDate,
