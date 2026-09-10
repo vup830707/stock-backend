@@ -9,7 +9,7 @@ FEATURE_COLS = [
 ]
 
 
-def build_feature_frame(bars: list[Bar]) -> pd.DataFrame:
+def _feature_columns_only(bars: list[Bar]) -> pd.DataFrame:
     df = pd.DataFrame([b.__dict__ for b in bars])
     close = df["close"]
     df["ret_1"] = close.pct_change(1)
@@ -33,6 +33,17 @@ def build_feature_frame(bars: list[Bar]) -> pd.DataFrame:
     low_close = (df["low"] - close.shift(1)).abs()
     tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
     df["atr_rel"] = tr.rolling(14).mean() / close
+    return df
+
+
+def build_feature_frame(bars: list[Bar]) -> pd.DataFrame:
+    df = _feature_columns_only(bars)
+    close = df["close"]
     df["y"] = close.pct_change().shift(-1)
     out = df.dropna().reset_index(drop=True)
     return out
+
+
+def build_inference_row(bars: list[Bar]) -> pd.Series:
+    df = _feature_columns_only(bars)
+    return df.dropna(subset=FEATURE_COLS).iloc[-1]

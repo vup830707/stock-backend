@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from timing.bars import Bar
-from timing.features import build_feature_frame
+from timing.features import FEATURE_COLS, build_feature_frame, build_inference_row
 
 
 def make_bars(n=80):
@@ -35,3 +35,12 @@ def test_rsi_50_for_flat_window():
     ]
     df = build_feature_frame(bars)
     assert abs(df.iloc[-1]["rsi_14"] - 50.0) < 1e-9
+
+
+def test_inference_row_uses_latest_bar_without_target():
+    bars = make_bars(80)
+
+    row = build_inference_row(bars)
+
+    assert row["date"] == bars[-1].date
+    assert row[FEATURE_COLS].notna().all()
