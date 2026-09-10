@@ -15,7 +15,11 @@ public class StockHistorical {
     private String stockNo;
     private String stockName;
     private String date;        // "2025/12/18"
+    private double openPrice;
+    private double highPrice;
+    private double lowPrice;
     private double closePrice;
+    private long volume;
 
     public StockHistorical() {}
 
@@ -28,6 +32,14 @@ public class StockHistorical {
     public void setStockName(String stockName) { this.stockName = stockName; }
     public String getDate() { return date; }
     public void setDate(String date) { this.date = date; }
+    public double getOpenPrice() { return openPrice; }
+    public void setOpenPrice(double openPrice) { this.openPrice = openPrice; }
+    public double getHighPrice() { return highPrice; }
+    public void setHighPrice(double highPrice) { this.highPrice = highPrice; }
+    public double getLowPrice() { return lowPrice; }
+    public void setLowPrice(double lowPrice) { this.lowPrice = lowPrice; }
     public double getClosePrice() { return closePrice; }
     public void setClosePrice(double closePrice) { this.closePrice = closePrice; }
+    public long getVolume() { return volume; }
+    public void setVolume(long volume) { this.volume = volume; }
 }

@@ -1,7 +1,7 @@
 package com.example.stock_backend.controller;
 
-import com.example.stock_backend.model.StockHistorical;
-import com.example.stock_backend.repository.StockHistoricalRepository;
+import com.example.stock_backend.service.StockHistoryWriter;
+import com.example.stock_backend.twse.TwseBarParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.web.bind.annotation.*;
@@ -17,12 +17,12 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class ManualFetchController {
 
-    private final StockHistoricalRepository repo;
+    private final StockHistoryWriter writer;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public ManualFetchController(StockHistoricalRepository repo) {
-        this.repo = repo;
+    public ManualFetchController(StockHistoryWriter writer) {
+        this.writer = writer;
     }
 
     /**
@@ -73,37 +73,11 @@ public class ManualFetchController {
 
         JsonNode data = root.path("data");
         for (JsonNode row : data) {
-            try {
-                String taiwanDate = row.get(0).asText();
-                if (taiwanDate.equals("--") || taiwanDate.isEmpty()) continue;
-
-                // 解析民國年 -> 西元 LocalDate
-                String[] parts = taiwanDate.split("/");
-                int year = Integer.parseInt(parts[0]) + 1911;
-                int month = Integer.parseInt(parts[1]);
-                int day = Integer.parseInt(parts[2]);
-                LocalDate d = LocalDate.of(year, month, day);
-
-                // ✅ 範圍裁切：不在區間內就跳過（這就是你缺的）
-                if (d.isBefore(start) || d.isAfter(end)) continue;
-
-                StockHistorical item = new StockHistorical();
-                item.setStockNo(stockNo);
-                item.setStockName(stockName);
-
-                // 你原本存字串日期：保持同格式
-                String formattedDate = String.format("%04d/%02d/%02d", year, month, day);
-                item.setDate(formattedDate);
-
-                String closeStr = row.get(6).asText().replace(",", "");
-                double closePrice = (!closeStr.equals("--") && !closeStr.isEmpty())
-                        ? Double.parseDouble(closeStr) : 0;
-                item.setClosePrice(closePrice);
-
-                repo.save(item);
-            } catch (Exception e) {
-                System.out.println("跳過資料：" + row.toString());
-            }
+            TwseBarParser.parseRow(row).ifPresent(bar -> {
+                LocalDate d = bar.date();
+                if (d.isBefore(start) || d.isAfter(end)) return;
+                writer.upsert(stockNo, stockName, bar);
+            });
         }
     }
 

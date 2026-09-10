@@ -8,5 +8,6 @@ import java.util.Optional;
 
 public interface StockHistoricalRepository extends MongoRepository<StockHistorical, String> {
     boolean existsByStockNoAndDate(String stockNo, String date);
+    Optional<StockHistorical> findByStockNoAndDate(String stockNo, String date);
     List<StockHistorical> findByStockNo(String stockNo);
 }

@@ -1,25 +1,23 @@
 package com.example.stock_backend.service;
 
-import com.example.stock_backend.model.StockHistorical;
-import com.example.stock_backend.repository.StockHistoricalRepository;
 import com.example.stock_backend.repository.CompanyRepository;
+import com.example.stock_backend.twse.TwseBarParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 @Service
 public class TwseService {
 
-    private final StockHistoricalRepository repo;
     private final CompanyRepository companyRepo;
+    private final StockHistoryWriter writer;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public TwseService(StockHistoricalRepository repo, CompanyRepository companyRepo) {
-        this.repo = repo;
+    public TwseService(CompanyRepository companyRepo, StockHistoryWriter writer) {
         this.companyRepo = companyRepo;
+        this.writer = writer;
     }
 
     public void fetchAndSave(String stockNo, String date) {
@@ -43,22 +41,8 @@ public class TwseService {
                     .orElse(stockNo);
 
             for (JsonNode row : data) {
-                String rowDate = row.get(0).asText(); // "112/12/18"
-                String[] parts = rowDate.split("/");
-                int year = Integer.parseInt(parts[0]) + 1911;
-                String formattedDate = year + "/" + parts[1] + "/" + parts[2];
-
-                StockHistorical item = new StockHistorical();
-                item.setStockNo(stockNo);
-                item.setStockName(stockName);
-                item.setDate(formattedDate);
-                item.setClosePrice(row.get(6).asDouble());
-
-                try {
-                    repo.save(item); // 唯一索引保護重複寫入
-                } catch (DuplicateKeyException e) {
-                    System.out.println(stockNo + " " + formattedDate + " 已存在，跳過");
-                }
+                TwseBarParser.parseRow(row)
+                        .ifPresent(bar -> writer.upsert(stockNo, stockName, bar));
             }
 
             System.out.println(stockNo + " 月資料抓取完成");
