@@ -19,6 +19,7 @@ services:
     environment:
       # 不用帳號密碼，直接連 MongoDB
       SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/stockDB
+      TIMING_SERVICE_URL: http://stock-ai-api:5000/evaluate
     ports:
       - "8080:8080"
     networks:
