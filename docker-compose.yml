@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mongo:
     image: mongo:7.0
@@ -12,12 +10,11 @@ services:
       - stock-net
 
   backend:
-    image: stock-backend:latest
+    image: stock-backend:local
     container_name: stock-backend
     depends_on:
       - mongo
     environment:
-      # 不用帳號密碼，直接連 MongoDB
       SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/stockDB
       TIMING_SERVICE_URL: http://stock-ai-api:5000/evaluate
     ports:
@@ -26,27 +23,15 @@ services:
       - stock-net
 
   ai_api:
-    image: stock-ai-api:latest
+    image: stock-ai-api:local
     container_name: stock-ai-api
     depends_on:
       - mongo
     environment:
-      # 不用帳號密碼，直接連 MongoDB
       MONGO_URI: mongodb://mongo:27017/stockDB
     command: flask run --host=0.0.0.0 --port=5000
     ports:
       - "5000:5000"
-    networks:
-      - stock-net
-
-  frontend:
-    image: stock-frontend:latest
-    container_name: stock-frontend
-    depends_on:
-      - backend
-      - ai_api
-    ports:
-      - "3000:80"
     networks:
       - stock-net
 
@@ -55,3 +40,5 @@ volumes:
 
 networks:
   stock-net:
+    external: true
+    name: stock-net

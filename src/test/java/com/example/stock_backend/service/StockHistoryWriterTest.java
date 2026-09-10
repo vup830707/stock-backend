@@ -11,7 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
-import java.util.Optional;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
@@ -31,7 +31,7 @@ class StockHistoryWriterTest {
         existing.setStockNo("2330");
         existing.setDate("2023/12/18");
         existing.setClosePrice(1);
-        when(repo.findByStockNoAndDate("2330", "2023/12/18")).thenReturn(Optional.of(existing));
+        when(repo.findAllByStockNoAndDate("2330", "2023/12/18")).thenReturn(List.of(existing));
 
         TwseBar bar = new TwseBar(LocalDate.of(2023, 12, 18), 500, 510, 495, 505, 1000L);
         writer.upsert("2330", "台積電", bar);
@@ -48,7 +48,7 @@ class StockHistoryWriterTest {
 
     @Test
     void upsert_savesNewBarWhenNoRecordExists() {
-        when(repo.findByStockNoAndDate("2330", "2023/12/18")).thenReturn(Optional.empty());
+        when(repo.findAllByStockNoAndDate("2330", "2023/12/18")).thenReturn(List.of());
 
         TwseBar bar = new TwseBar(LocalDate.of(2023, 12, 18), 500, 510, 495, 505, 1000L);
         writer.upsert("2330", "台積電", bar);
@@ -64,5 +64,27 @@ class StockHistoryWriterTest {
         assertEquals(495, saved.getLowPrice(), 1e-6);
         assertEquals(505, saved.getClosePrice(), 1e-6);
         assertEquals(1000L, saved.getVolume());
+    }
+
+    @Test
+    void upsert_deletesDuplicateRowsAndUpdatesFirst() {
+        StockHistorical first = new StockHistorical();
+        first.setId("keep");
+        first.setStockNo("2330");
+        first.setDate("2023/12/18");
+        StockHistorical extra = new StockHistorical();
+        extra.setId("drop");
+        extra.setStockNo("2330");
+        extra.setDate("2023/12/18");
+        when(repo.findAllByStockNoAndDate("2330", "2023/12/18")).thenReturn(List.of(first, extra));
+
+        TwseBar bar = new TwseBar(LocalDate.of(2023, 12, 18), 500, 510, 495, 505, 1000L);
+        writer.upsert("2330", "台積電", bar);
+
+        verify(repo).delete(extra);
+        ArgumentCaptor<StockHistorical> cap = ArgumentCaptor.forClass(StockHistorical.class);
+        verify(repo).save(cap.capture());
+        assertEquals("keep", cap.getValue().getId());
+        assertEquals(505, cap.getValue().getClosePrice(), 1e-6);
     }
 }
